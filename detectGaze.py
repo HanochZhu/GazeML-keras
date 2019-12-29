@@ -9,36 +9,21 @@ import numpy as np
 import cv2
 from matplotlib import pyplot as plt
 
-def draw_pupil(im, inp_im, lms):
-    draw = im.copy()
-    draw = cv2.resize(draw, (inp_im.shape[2], inp_im.shape[1]))
+def draw_pupil(lms):
     pupil_center = np.zeros((2,))
     pnts_outerline = []
     pnts_innerline = []
     stroke = 1
     actual_pos = []
+    # 0-7 eye corner
+    # 8-15 iris
+    # 16 pupil
     for i, lm in enumerate(np.squeeze(lms)):
         #print(lm)
         # y 就是x，x就是y
         y, x = int(lm[0] * 3), int(lm[1]*3)
         actual_pos.append([y,x])
-        if i < 8:
-            draw = cv2.circle(draw, (y, x), stroke, (125,255,125), -1)
-            draw = cv2.circle(draw, (y, 0), stroke, (125,255,125), -1)
-            pnts_outerline.append([y, x])
-        elif i < 16:
-            draw = cv2.circle(draw, (y, x), stroke, (125,125,255), -1)
-            pnts_innerline.append([y, x])
-            pupil_center += (y,x)
-        elif i < 17:
-            draw = cv2.drawMarker(draw, (y, x), (255,200,200), markerType=cv2.MARKER_CROSS, markerSize=5, thickness=stroke, line_type=cv2.LINE_AA)
-        else:
-            draw = cv2.drawMarker(draw, (y, x), (255,125,125), markerType=cv2.MARKER_CROSS, markerSize=5, thickness=stroke, line_type=cv2.LINE_AA)
-    pupil_center = (pupil_center/8).astype(np.int32)
-    draw = cv2.circle(draw, (pupil_center[0], pupil_center[1]), stroke, (255,255,0), -1)        
-    draw = cv2.polylines(draw, [np.array(pnts_outerline).reshape(-1,1,2)], isClosed=True, color=(125,255,125), thickness=stroke//2)
-    draw = cv2.polylines(draw, [np.array(pnts_innerline).reshape(-1,1,2)], isClosed=True, color=(125,125,255), thickness=stroke//2)
-    return draw,actual_pos
+    return actual_pos
 
 # xy
 def recalPos(pos,imagew,imageh):
@@ -73,10 +58,10 @@ draw = input_img.copy()
 ###
 #  ——————————————
 # |             |
-# |      .      |
 # |             |
+# |      *      |
 # |             |
-# _______________
+# |_____________|
 ###
 
 left_eye_im = input_img[
@@ -121,70 +106,47 @@ lms_left = model._calculate_landmarks(pred_left)
 lms_right = model._calculate_landmarks(pred_right)
 
 lms_left = model._calculate_landmarks(pred_left)
-result_left,actual_pos_left = draw_pupil(left_eye_im, inp_left, lms_left)
-
-print(input_img.shape[0],input_img.shape[1])
+actual_pos_left = draw_pupil(lms_left)
 
 # x,y
 actual_pos_left = recalPos(actual_pos_left,eye_bbox_w,eye_bbox_h)
 
-cv2.imshow("image",result_left)
-
-cv2.waitKey()
-
 lms_right = model._calculate_landmarks(pred_right)
-result_right,actual_pos_right = draw_pupil(right_eye_im, inp_right, lms_right)
+actual_pos_right = draw_pupil(lms_right)
 
-
-
-cv2.imshow("image",result_right)
-
-cv2.waitKey()
-    
-
+actual_pos_right = recalPos(actual_pos_right,eye_bbox_w,eye_bbox_h)
 
 # for lm in iris_lm_right:
 #     draw = cv2.circle(draw, (int(left_bboxx + lm[0]),int(left_bboxy + lm[1])), 1, (255,255,255), -1)
-draw2 = input_img.copy()
-
-slice_h = slice(int(left_eye_xy[0]-eye_bbox_h//2), int(left_eye_xy[0]+eye_bbox_h//2))
-slice_w = slice(int(left_eye_xy[1]-eye_bbox_w//2), int(left_eye_xy[1]+eye_bbox_w//2))
-im_shape = left_eye_im.shape[::-1]
-
-draw2[slice_h, slice_w, :] = cv2.resize(result_left, im_shape[1:])
-
-slice_h = slice(int(right_eye_xy[0]-eye_bbox_h//2), int(right_eye_xy[0]+eye_bbox_h//2))
-slice_w = slice(int(right_eye_xy[1]-eye_bbox_w//2), int(right_eye_xy[1]+eye_bbox_w//2))
-im_shape = right_eye_im.shape[::-1]
-
-draw2[slice_h, slice_w, :] = cv2.resize(result_right, im_shape[1:])
-
-cv2.imshow("image",draw2)
-cv2.waitKey()
 
 left_eye_im_leftTop = [int(left_eye_xy[0]-eye_bbox_h//2),int(left_eye_xy[1]-eye_bbox_w//2)]
+
 left_eye_im_leftBottom = [int(left_eye_xy[0] + eye_bbox_h//2),int(left_eye_xy[1]-eye_bbox_w//2)]
 left_eye_im_rightTop = [int(left_eye_xy[0]-eye_bbox_h//2),int(left_eye_xy[1]+ eye_bbox_w//2)]
 left_eye_im_rightBottom = [int(left_eye_xy[0]+eye_bbox_h//2),int(left_eye_xy[1]+eye_bbox_w//2)]
+
+right_eye_im_leftTop = [int(right_eye_xy[0]-eye_bbox_h//2),int(right_eye_xy[1]-eye_bbox_w//2)]
 
 
 for i, lm in enumerate([left_eye_xy, right_eye_xy]):
     draw = cv2.circle(draw, (int(lm[1]), int(lm[0])), 1, (255*i,255*(1-i),0), -1)
 
-print(left_eye_im_leftTop[1])
 draw = cv2.circle(draw, (100,0), 10, (255,0,0), -1)
 #draw = cv2.circle(draw, (left_eye_im_leftTop[1], left_eye_im_leftTop[0]), 1, (255,0,0), -1)
 #draw = cv2.circle(draw, (left_eye_im_leftBottom[1], left_eye_im_leftBottom[0]), 1, (0,255,0), -1)
 draw = cv2.circle(draw, (left_eye_im_rightTop[1], left_eye_im_rightTop[0]), 1, (0,0,255), -1)
 #draw = cv2.circle(draw, (left_eye_im_rightBottom[1], left_eye_im_rightBottom[0]), 1, (255,255,255), -1)
 
-
 iris_lm_right = []
 for i,lm in enumerate(np.squeeze(lms_right)):
     iris_lm_right.append([int(lm[0]),int(lm[1])])
 
-for lm in actual_pos_left[8:15]:
+for lm in actual_pos_left[8:16]:
     draw = cv2.circle(draw, (int(left_eye_im_leftTop[1] + lm[0] ),int(left_eye_im_leftTop[0] + lm[1])), 1, (255,255,255), -1)
+    print("lm",lm[1],lm[0])
+
+for lm in actual_pos_right[8:16]:
+    draw = cv2.circle(draw, (int(right_eye_im_leftTop[1] + lm[0] ),int(right_eye_im_leftTop[0] + lm[1])), 1, (255,255,255), -1)
     print("lm",lm[1],lm[0])
 
 cv2.imshow("image",draw)
