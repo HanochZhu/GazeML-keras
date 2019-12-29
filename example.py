@@ -54,14 +54,19 @@ fd = MTCNNFaceDetector(sess=K.get_session(), model_path = mtcnn_weights_dir)
 model = KerasELG()
 model.net.load_weights("./elg_weights/elg_keras.h5")
 
-fn = "./test_imgs/Lenna_(test_image).png"
+fn = "./240281904_1.jpg"
 input_img = cv2.imread(fn)[..., ::-1]
 
 face, lms = fd.detect_face(input_img) # assuming there is only one face in input image
 assert len(face) >= 1, "No face detected"
-
-left_eye_xy = np.array([lms[6], lms[1]])
-right_eye_xy = np.array([lms[5], lms[0]])
+print(right_eye_xy)
+if  len(face) > 1:
+    
+    left_eye_xy = np.array([lms[6][0], lms[1]][0])
+    right_eye_xy = np.array([lms[5][0], lms[0][0]])
+else:
+    left_eye_xy = np.array([lms[6], lms[1]])
+    right_eye_xy = np.array([lms[5], lms[0]])
 
 dist_eyes = np.linalg.norm(left_eye_xy - right_eye_xy)
 # bounding box
